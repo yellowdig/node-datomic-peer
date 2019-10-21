@@ -1,0 +1,7 @@
+{:deps
+ {com.datomic/datomic-free {:mvn/version "0.9.5697"}
+  org.clojure/clojure {:mvn/version "1.10.1"}}
+ :paths ["dev" "resources" "src" "test"]
+ :aliases {:depstar
+           {:extra-deps
+            {seancorfield/depstar {:mvn/version "0.3.3"}}}}}

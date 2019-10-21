@@ -1,0 +1,3 @@
+datomic/datomic-node.jar
+datomic/.cpcache/
+node_modules/**

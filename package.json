@@ -1,0 +1,22 @@
+{
+  "name": "node-datomic-peer",
+  "scripts": {
+    "build-jar": "cd datomic && clojure -A:depstar -m hf.depstar.uberjar datomic-node.jar",
+    "test": "mocha test.js",
+    "watch": "mocha -w test.js"
+  },
+  "version": "0.0.1",
+  "description": "node.js interface to embedded datomic peer library ",
+  "main": "index.js",
+  "repository": "git@github.com:yellowdig/node-datomic-peer.git",
+  "author": "Brian Hurlow <brian@brianhurlow.com>",
+  "license": "MIT",
+  "dependencies": {
+    "java": "^0.11.1",
+    "ramda": "^0.26.1"
+  },
+  "devDependencies": {
+    "faker": "^4.1.0",
+    "mocha": "^6.2.2"
+  }
+}
