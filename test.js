@@ -18,7 +18,7 @@ const {
   tempid
 } = require('./src/api')
 
-const { read, toList, toMap } = require('./src/util')
+const { read, toEdn } = require('./src/util')
 const convert = require('./src/convert')
 
 const uri = 'datomic:mem://localhost:4334/yellowdig'
@@ -43,6 +43,17 @@ const installSchema = conn => {
       ':db/ident': ':user/roles',
       ':db/valueType': ':db.type/keyword',
       ':db/cardinality': ':db.cardinality/many'
+    },
+    {
+      ':db/ident': ':user/email-settings',
+      ':db/valueType': ':db.type/ref',
+      ':db/cardinality': ':db.cardinality/many',
+      ':db/isComponent': true
+    },
+    {
+      ':db/ident': ':email-setting/color',
+      ':db/valueType': ':db.type/keyword',
+      ':db/cardinality': ':db.cardinality/one'
     },
     {
       ':db/ident': ':lang/title',
@@ -112,6 +123,17 @@ describe('type coercion', () => {
 
     assert.deepEqual(data.sort(), expected.sort())
   })
+
+  it('convers js to edn', () => {
+    const input = {
+      ':foo': {
+        ':bar': [1, 2, 3]
+      }
+    }
+    const data = toEdn(input)
+    const str = data.toString()
+    assert.equal(str, '{:foo={:bar=[1, 2, 3]}}')
+  })
 })
 
 describe('datomic interop', () => {
@@ -137,6 +159,24 @@ describe('datomic interop', () => {
     assert(R.type(tempids) === 'Object')
     assert(R.type(R.head(R.keys(tempids))) === 'String')
     assert(R.type(R.head(R.values(tempids))) === 'Number')
+  })
+
+  it('can transact temp id strings', async () => {
+    const row = [read(':db/add'), 'temp-user', ':user/username', 'kevin']
+    const { tempids } = await transact(conn, [row])
+    assert(!!tempids['temp-user'])
+  })
+
+  it('can transact nested objects', async () => {
+    const row = {
+      ':db/id': 'temp-user',
+      ':user/email-settings': [
+        {
+          ':email-setting/color': ':red'
+        }
+      ]
+    }
+    const { tempids } = await transact(conn, [row])
   })
 
   it('can query for data', async () => {

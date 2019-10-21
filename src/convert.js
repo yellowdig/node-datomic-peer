@@ -93,7 +93,13 @@ function toJS(x) {
     // TODO
     // handle case where long exceeds
     // size of js number class
-    return Number(x.longValue)
+    let val = x.longValue
+
+    if (val.length > 18) {
+      return val
+    }
+
+    return Number(val)
   }
 
   if ('Number' === R.type(x)) {

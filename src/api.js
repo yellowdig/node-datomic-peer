@@ -2,8 +2,11 @@ const R = require('ramda')
 const java = require('java')
 const assert = require('assert')
 
-const { read, toList, toMap } = require('./util')
+const { read, toEdn } = require('./util')
 const convert = require('./convert')
+
+// java.classpath.push('./datomic/datomic-http.jar')
+// console.log('IMPORT CLOJURE')
 
 var Clojure = java.import('clojure.java.api.Clojure')
 var Connection = java.import('datomic.Connection')
@@ -29,23 +32,11 @@ function deleteDatabase(uri) {
 }
 
 function transact(conn, data) {
-  assert(R.type(data), 'Array')
-
-  // TODO
-  // need js->clj function
-  const fmtRow = x => {
-    if ('Object' === R.type(x)) {
-      return toMap(x)
-    }
-    if ('Array' === R.type(x)) {
-      return toList(x)
-    }
-  }
-
-  const fmtData = toList(R.map(fmtRow, data))
+  const isArray = 'Array' === R.type(data)
+  const inputData = isArray ? toEdn(data) : read(data)
 
   return new Promise((resolve, reject) => {
-    conn.transact(fmtData, (err, res) => {
+    conn.transact(inputData, (err, res) => {
       if (err) reject(err)
       const txResponse = res.getSync()
 
@@ -62,21 +53,16 @@ function transact(conn, data) {
   })
 }
 
-function pull(db, pattern, eid) {
-  const res = db.pullSync(
-    pattern,
-    // we read() here to
-    // ensure input eid is read as a Long
-    read(String(eid))
-  )
+function pull(db, pattern, eidOrRef) {
+  const res = db.pullSync(pattern, toEdn(eidOrRef))
   return convert(res)
 }
 
 // TODO
 // expose other entity operations?
 // https://docs.datomic.com/on-prem/javadoc/datomic/Entity.html
-function entity(db, eid) {
-  const res = db.entitySync(read(String(eid)))
+function entity(db, eidOrRef) {
+  const res = db.entitySync(toEdn(eidOrRef))
   return {
     get: k => convert(res.getSync(k))
   }
