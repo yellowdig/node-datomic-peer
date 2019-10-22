@@ -5,8 +5,9 @@ const assert = require('assert')
 const { read, toEdn } = require('./util')
 const convert = require('./convert')
 
-// java.classpath.push('./datomic/datomic-http.jar')
-// console.log('IMPORT CLOJURE')
+java.options.push('-Xmx2048m')
+java.classpath.push('./datomic/datomic-http.jar')
+console.log('IMPORT CLOJURE')
 
 var Clojure = java.import('clojure.java.api.Clojure')
 var Connection = java.import('datomic.Connection')
@@ -16,6 +17,9 @@ var Util = java.import('datomic.Util')
 
 java.import('clojure.lang.RT')
 java.import('java.util.List')
+
+const cljRequire = Clojure.varSync('clojure.core', 'require')
+cljRequire.invokeSync(Clojure.readSync('datomic.api'))
 
 // ===== API
 
@@ -54,7 +58,16 @@ function transact(conn, data) {
 }
 
 function pull(db, pattern, eidOrRef) {
-  const res = db.pullSync(pattern, toEdn(eidOrRef))
+  return new Promise((resolve, reject) => {
+    const res = db.pull(pattern, toEdn(eidOrRef), (err, res) => {
+      if (err) reject(err)
+      resolve(convert(res))
+    })
+  })
+}
+
+function pullMany(db, pattern, eidsOrRefs) {
+  const res = db.pullManySync(read(pattern), toEdn(eidsOrRefs))
   return convert(res)
 }
 
@@ -86,8 +99,18 @@ function datoms(db, index, ...components) {
 }
 
 function q(...args) {
-  const res = java.callStaticMethodSync('datomic.Peer', 'q', ...args)
-  return convert(res)
+  const inputs = args.map(toEdn)
+  return new Promise((resolve, reject) => {
+    const res = java.callStaticMethod(
+      'datomic.Peer',
+      'query',
+      ...inputs,
+      (err, res) => {
+        if (err) reject(err)
+        resolve(convert(res))
+      }
+    )
+  })
 }
 
 function db(conn) {
@@ -103,6 +126,7 @@ module.exports = {
   createDatabase,
   deleteDatabase,
   pull,
+  pullMany,
   q,
   db,
   transact,

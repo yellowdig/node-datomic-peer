@@ -124,6 +124,10 @@ function toJS(x) {
     return [coerced.e, coerced.a, coerced.v, coerced.tx, coerced.added]
   }
 
+  if ('clojure.lang.Symbol' === type) {
+    return String(x)
+  }
+
   console.log('NA TYPE', type)
   return 'n/a'
 }

@@ -11,6 +11,7 @@ const {
   createDatabase,
   deleteDatabase,
   pull,
+  pullMany,
   transact,
   entity,
   connect,
@@ -201,6 +202,22 @@ describe('datomic interop', () => {
     assert(R.all(validRow, data))
   })
 
+  it('can select scalars with .', async () => {
+    const users = R.range(0, 5).map(makeUser)
+    const res = await transact(conn, users)
+
+    const query = `
+     [:find ?v .
+      :where [?e :user/username ?v]]
+    `
+
+    const _db = db(conn)
+
+    const data = q(query, _db)
+
+    console.log(data)
+  })
+
   it('can destructure :find', async () => {
     const _db = db(conn)
 
@@ -278,6 +295,29 @@ describe('datomic interop', () => {
     assert(data.length === 2)
   })
 
+  it('can call datomic.api namespace in query', async () => {
+    const users = [
+      { ':user/username': 'foo', ':user/age': 10 },
+      { ':user/username': 'bar', ':user/age': 64 },
+      { ':user/username': 'baz', ':user/age': 62 }
+    ]
+
+    const res = await transact(conn, users)
+
+    const query = `
+     [:find ?p
+      :in $ 
+      :where [?e :user/age ?age]
+             [(get-else $ ?e :user/username (datomic.api/entid $ ?e)) ?p]]]
+    `
+
+    const _db = db(conn)
+
+    const data = q(query, _db)
+
+    assert.deepEqual(data, [['bar'], ['foo'], ['baz']])
+  })
+
   it('can pull attrs', async () => {
     const tmpid = tempid()
 
@@ -297,6 +337,30 @@ describe('datomic interop', () => {
     const res = pull(db(conn), '[:user/age :user/roles]', eid)
 
     assert.equal(res[':user/age'], 11)
+  })
+
+  it('can pull many', async () => {
+    const users = [
+      { ':user/username': 'foo', ':user/age': 90 },
+      { ':user/username': 'bar', ':user/age': 91 },
+      { ':user/username': 'baz', ':user/age': 92 }
+    ]
+
+    const res = await transact(conn, users)
+
+    const _db = db(conn)
+
+    const query = `
+     [:find [?e ...]
+      :in $ 
+      :where [?e :user/age ?a]
+             [(> ?a 90)]]
+    `
+
+    const ids = q(query, _db)
+    const many = pullMany(_db, '[:user/username]', ids)
+
+    assert.deepEqual(many.map(R.prop(':user/username')), ['bar', 'baz'])
   })
 
   it('can access attrs via entity api', async () => {
